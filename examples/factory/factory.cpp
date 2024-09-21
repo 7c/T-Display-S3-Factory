@@ -6,6 +6,7 @@
 // #define TOUCH_MODULES_CST_MUTUAL
 // #define TOUCH_MODULES_CST_SELF
 
+#include <Arduino.h>
 #if defined(TOUCH_MODULES_CST_MUTUAL) ||defined(TOUCH_MODULES_CST_SELF)
 #include "TouchLib.h"
 #endif
