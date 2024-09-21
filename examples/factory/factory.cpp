@@ -1,11 +1,5 @@
-/* Please make sure your touch IC model. */
-// If you don't have a touch panel, you don't need to define a touch model
-
 #include <Arduino.h>
 
-
-/* The product now has two screens, and the initialization code needs a small change in the new version. The LCD_MODULE_CMD_1 is used to define the
- * switch macro. */
 #define LCD_MODULE_CMD_1
 
 #include "OneButton.h" /* https://github.com/mathertel/OneButton.git */
@@ -17,15 +11,13 @@
 #include "esp_lcd_panel_vendor.h"
 #include "factory_gui.h"
 #include "pin_config.h"
-
-
+#include "sound.h"
 
 // The factory program uses the Chinese time zone by default.
 // Commenting this line will automatically get the time zone, provided that the SSL certificate is valid.
 // Please pay attention to check the validity of the certificate.
 // The current configuration certificate is valid until April 16, 2024
-#define CUSTOM_TIMEZONE         "UTC0"
-
+#define CUSTOM_TIMEZONE "UTC0"
 
 esp_lcd_panel_io_handle_t io_handle = NULL;
 static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
@@ -35,7 +27,8 @@ static bool is_initialized_lvgl = false;
 OneButton button1(PIN_BUTTON_1, true);
 OneButton button2(PIN_BUTTON_2, true);
 #if defined(LCD_MODULE_CMD_1)
-typedef struct {
+typedef struct
+{
     uint8_t cmd;
     uint8_t data[14];
     uint8_t len;
@@ -60,10 +53,8 @@ lcd_cmd_t lcd_st7789v[] = {
 };
 #endif
 
-
 bool inited_touch = false;
 bool inited_sd = false;
-
 
 void timeavailable(struct timeval *t);
 void printLocalTime();
@@ -71,7 +62,8 @@ void setTimezone();
 
 static bool example_notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
 {
-    if (is_initialized_lvgl) {
+    if (is_initialized_lvgl)
+    {
         lv_disp_drv_t *disp_driver = (lv_disp_drv_t *)user_ctx;
         lv_disp_flush_ready(disp_driver);
     }
@@ -89,7 +81,8 @@ static void example_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_
     esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, color_map);
 }
 
-void setFakeTime() {
+void setFakeTime()
+{
     // Set the time manually
     struct tm tm;
     tm.tm_year = 2024 - 1900; // Year since 1900
@@ -99,18 +92,18 @@ void setFakeTime() {
     tm.tm_min = 15;
     tm.tm_sec = 0;
     time_t t = mktime(&tm);
-    struct timeval now = { .tv_sec = t };
+    struct timeval now = {.tv_sec = t};
     settimeofday(&now, NULL);
 }
 
 void setup()
 {
-    
+
     // (POWER ON)IO15 must be set to HIGH before starting, otherwise the screen will not display when using battery
     pinMode(PIN_POWER_ON, OUTPUT);
     digitalWrite(PIN_POWER_ON, HIGH);
     Serial.begin(115200);
-    delay(5000);
+    delay(1000);
     Serial.println("Starting");
     setFakeTime();
     Serial.println("Time set to " + String(time(NULL)));
@@ -123,21 +116,20 @@ void setup()
         .wr_gpio_num = PIN_LCD_WR,
         .clk_src = LCD_CLK_SRC_PLL160M,
         .data_gpio_nums =
-        {
-            PIN_LCD_D0,
-            PIN_LCD_D1,
-            PIN_LCD_D2,
-            PIN_LCD_D3,
-            PIN_LCD_D4,
-            PIN_LCD_D5,
-            PIN_LCD_D6,
-            PIN_LCD_D7,
-        },
+            {
+                PIN_LCD_D0,
+                PIN_LCD_D1,
+                PIN_LCD_D2,
+                PIN_LCD_D3,
+                PIN_LCD_D4,
+                PIN_LCD_D5,
+                PIN_LCD_D6,
+                PIN_LCD_D7,
+            },
         .bus_width = 8,
         .max_transfer_bytes = LVGL_LCD_BUF_SIZE * sizeof(uint16_t),
         .psram_trans_align = 0,
-        .sram_trans_align = 0
-    };
+        .sram_trans_align = 0};
     esp_lcd_new_i80_bus(&bus_config, &i80_bus);
 
     esp_lcd_panel_io_i80_config_t io_config = {
@@ -149,12 +141,12 @@ void setup()
         .lcd_cmd_bits = 8,
         .lcd_param_bits = 8,
         .dc_levels =
-        {
-            .dc_idle_level = 0,
-            .dc_cmd_level = 0,
-            .dc_dummy_level = 0,
-            .dc_data_level = 1,
-        },
+            {
+                .dc_idle_level = 0,
+                .dc_cmd_level = 0,
+                .dc_dummy_level = 0,
+                .dc_data_level = 1,
+            },
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_i80(i80_bus, &io_config, &io_handle));
     esp_lcd_panel_handle_t panel_handle = NULL;
@@ -162,8 +154,7 @@ void setup()
         .reset_gpio_num = PIN_LCD_RES,
         .color_space = ESP_LCD_COLOR_SPACE_RGB,
         .bits_per_pixel = 16,
-        .vendor_config = NULL
-    };
+        .vendor_config = NULL};
     esp_lcd_new_panel_st7789(io_handle, &panel_config, &panel_handle);
     esp_lcd_panel_reset(panel_handle);
     esp_lcd_panel_init(panel_handle);
@@ -172,17 +163,18 @@ void setup()
 
     esp_lcd_panel_swap_xy(panel_handle, true);
 
-    //The screen faces you, and the USB is on the left
+    // The screen faces you, and the USB is on the left
     esp_lcd_panel_mirror(panel_handle, false, true);
 
-    //The screen faces you, the USB is to the right
-    // esp_lcd_panel_mirror(panel_handle, true, false);
+    // The screen faces you, the USB is to the right
+    //  esp_lcd_panel_mirror(panel_handle, true, false);
 
     // the gap is LCD panel specific, even panels with the same driver IC, can
     // have different gap value
     esp_lcd_panel_set_gap(panel_handle, 0, 35);
 #if defined(LCD_MODULE_CMD_1)
-    for (uint8_t i = 0; i < (sizeof(lcd_st7789v) / sizeof(lcd_cmd_t)); i++) {
+    for (uint8_t i = 0; i < (sizeof(lcd_st7789v) / sizeof(lcd_cmd_t)); i++)
+    {
         esp_lcd_panel_io_tx_param(io_handle, lcd_st7789v[i].cmd, lcd_st7789v[i].data, lcd_st7789v[i].len & 0x7f);
         if (lcd_st7789v[i].len & 0x80)
             delay(120);
@@ -191,7 +183,8 @@ void setup()
     /* Lighten the screen with gradient */
     ledcSetup(0, 10000, 8);
     ledcAttachPin(PIN_LCD_BL, 0);
-    for (uint8_t i = 0; i < 0xFF; i++) {
+    for (uint8_t i = 0; i < 0xFF; i++)
+    {
         ledcWrite(0, i);
         delay(2);
     }
@@ -210,21 +203,23 @@ void setup()
     disp_drv.user_data = panel_handle;
     lv_disp_drv_register(&disp_drv);
 
-
-
     is_initialized_lvgl = true;
 
-
-    
     setTimezone();
     ui_begin();
 
     button1.attachClick([]() {
         Serial.println("Button 1 clicked");
+        // original tone() function from platformio > packages > framework-arduinoespressif32@3.20014.231204 › cores › esp32 > Tone.cpp
+        tone(SPEAKER_PIN, 5000, 1000);
+        // after tone has finished playing, the display is kept black but all the events seems to be continue to work
+        Serial.println("tone() played");
     });
 
     button2.attachClick([]() {
         Serial.println("Button 2 clicked");
+        my_tone(SPEAKER_PIN, 5000, 1000);
+        Serial.println("my_tone() played");
     });
 
     Serial.println("Setup complete");
@@ -236,10 +231,12 @@ void loop()
     lv_timer_handler();
     button1.tick();
     button2.tick();
-    delay(3);    
-    if (millis() - last_tick > 100) {
+    delay(3);
+    if (millis() - last_tick > 100)
+    {
         struct tm timeinfo;
-        if (getLocalTime(&timeinfo)) {
+        if (getLocalTime(&timeinfo))
+        {
             lv_msg_send(MSG_NEW_HOUR, &timeinfo.tm_hour);
             lv_msg_send(MSG_NEW_MIN, &timeinfo.tm_min);
         }
@@ -247,11 +244,11 @@ void loop()
     }
 }
 
-
 void printLocalTime()
 {
     struct tm timeinfo;
-    if (!getLocalTime(&timeinfo)) {
+    if (!getLocalTime(&timeinfo))
+    {
         Serial.println("No time available (yet)");
         return;
     }
